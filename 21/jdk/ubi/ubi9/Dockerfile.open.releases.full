@@ -24,44 +24,11 @@ RUN dnf install -y \
         tzdata openssl ca-certificates fontconfig glibc-langpack-en gzip tar \
     && dnf update -y && dnf clean all;
 
-LABEL name="IBM Semeru Runtime " \
-      vendor="International Business Machines Corporation" \
-      version="jdk-21.0.2+13_openj9-0.43.0" \
-      release="21" \
-      run="docker run --rm -ti <image_name:tag> /bin/bash" \
-      summary="IBM Semeru Runtime Docker Image for OpenJDK with openj9 and ubi" \
-      description="For more information on this image please see https://github.com/ibmruntimes/semeru-containers/blob/master/README.md"
-
 # Install CRIU
-RUN --mount=type=secret,id=criu_secrets source /run/secrets/criu_secrets; \
-    set -eux; \
-    ARCH="$(uname -m)"; \
-    case "${ARCH}" in \
-        amd64|x86_64) \
-          CRIU_URL='https://na-public.artifactory.swg-devops.com/artifactory/sys-rt-generic-local/hyc-runtimes-jenkins.swg-devops.com/build-scripts/criu_build/33/x64_linux/ubi9/criu.tar.gz'; \
-          CRIU_SHA_URL='https://na-public.artifactory.swg-devops.com/artifactory/sys-rt-generic-local/hyc-runtimes-jenkins.swg-devops.com/build-scripts/criu_build/33/x64_linux/ubi9/criu.tar.gz.sha256.txt'; \
-          ;; \
-        ppc64el|ppc64le) \
-          CRIU_URL='https://na-public.artifactory.swg-devops.com/artifactory/sys-rt-generic-local/hyc-runtimes-jenkins.swg-devops.com/build-scripts/criu_build/33/ppc64le_linux/ubi9/criu.tar.gz'; \
-          CRIU_SHA_URL='https://na-public.artifactory.swg-devops.com/artifactory/sys-rt-generic-local/hyc-runtimes-jenkins.swg-devops.com/build-scripts/criu_build/33/ppc64le_linux/ubi9/criu.tar.gz.sha256.txt'; \
-          ;; \
-        s390x) \
-          CRIU_URL='https://na-public.artifactory.swg-devops.com/artifactory/sys-rt-generic-local/hyc-runtimes-jenkins.swg-devops.com/build-scripts/criu_build/33/s390x_linux/ubi9/criu.tar.gz'; \
-          CRIU_SHA_URL='https://na-public.artifactory.swg-devops.com/artifactory/sys-rt-generic-local/hyc-runtimes-jenkins.swg-devops.com/build-scripts/criu_build/33/s390x_linux/ubi9/criu.tar.gz.sha256.txt'; \
-          ;; \
-        aarch64) \
-          CRIU_URL='https://na-public.artifactory.swg-devops.com/artifactory/sys-rt-generic-local/hyc-runtimes-jenkins.swg-devops.com/build-scripts/criu_build/33/aarch64_linux/ubi9/criu.tar.gz'; \
-          CRIU_SHA_URL='https://na-public.artifactory.swg-devops.com/artifactory/sys-rt-generic-local/hyc-runtimes-jenkins.swg-devops.com/build-scripts/criu_build/33/aarch64_linux/ubi9/criu.tar.gz.sha256.txt'; \
-          ;; \
-        *) \
-          echo "Unsupported arch: ${ARCH}"; \
-          exit 1; \
-          ;; \
-    esac; \
+COPY criu.tar.gz /tmp/criu.tar.gz
+
+RUN set -eux; \
     cd /tmp; \
-    curl -H "${CRIU_AUTH_HEADER}" -LfsSo criu.tar.gz ${CRIU_URL}; \
-    curl -H "${CRIU_AUTH_HEADER}" -LfsSo criu.tar.gz.sha256.txt ${CRIU_SHA_URL}; \
-    sha256sum -c criu.tar.gz.sha256.txt; \
     tar -xzf criu.tar.gz --strip-components=1; \
     cp -R usr/local /usr; \
     echo /usr/local/lib64 > /etc/ld.so.conf.d/criu.conf; \
@@ -73,37 +40,12 @@ RUN --mount=type=secret,id=criu_secrets source /run/secrets/criu_secrets; \
     rm -fr criu criu.tar.gz;
 
 ENV PATH="/usr/local/sbin:$PATH"
-
 ENV JAVA_VERSION jdk-21.0.2+13_openj9-0.43.0
 
-RUN --mount=type=secret,id=criu_secrets source /run/secrets/criu_secrets; \
-    set -eux; \
+# Install our custom JDK
+COPY jdk.tar.gz /tmp/openjdk.tar.gz
+RUN set -eux; \
     ARCH="$(uname -m)"; \
-    case "${ARCH}" in \
-       aarch64|arm64) \
-         ESUM_URL='https://github.com/ibmruntimes/semeru21-binaries/releases/download/jdk-21.0.2%2B13_openj9-0.43.0/ibm-semeru-open-jdk_aarch64_linux_21.0.2_13_openj9-0.43.0.tar.gz.sha256.txt'; \
-         BINARY_URL='https://github.com/ibmruntimes/semeru21-binaries/releases/download/jdk-21.0.2%2B13_openj9-0.43.0/ibm-semeru-open-jdk_aarch64_linux_21.0.2_13_openj9-0.43.0.tar.gz'; \
-         ;; \
-       amd64|x86_64) \
-         ESUM_URL='https://github.com/ibmruntimes/semeru21-binaries/releases/download/jdk-21.0.2%2B13_openj9-0.43.0/ibm-semeru-open-jdk_x64_linux_21.0.2_13_openj9-0.43.0.tar.gz.sha256.txt'; \
-         BINARY_URL='https://github.com/ibmruntimes/semeru21-binaries/releases/download/jdk-21.0.2%2B13_openj9-0.43.0/ibm-semeru-open-jdk_x64_linux_21.0.2_13_openj9-0.43.0.tar.gz'; \
-         ;; \
-       ppc64el|ppc64le) \
-         ESUM_URL='https://github.com/ibmruntimes/semeru21-binaries/releases/download/jdk-21.0.2%2B13_openj9-0.43.0/ibm-semeru-open-jdk_ppc64le_linux_21.0.2_13_openj9-0.43.0.tar.gz.sha256.txt'; \
-         BINARY_URL='https://github.com/ibmruntimes/semeru21-binaries/releases/download/jdk-21.0.2%2B13_openj9-0.43.0/ibm-semeru-open-jdk_ppc64le_linux_21.0.2_13_openj9-0.43.0.tar.gz'; \
-         ;; \
-       s390x) \
-         ESUM_URL='https://github.com/ibmruntimes/semeru21-binaries/releases/download/jdk-21.0.2%2B13_openj9-0.43.0/ibm-semeru-open-jdk_s390x_linux_21.0.2_13_openj9-0.43.0.tar.gz.sha256.txt'; \
-         BINARY_URL='https://github.com/ibmruntimes/semeru21-binaries/releases/download/jdk-21.0.2%2B13_openj9-0.43.0/ibm-semeru-open-jdk_s390x_linux_21.0.2_13_openj9-0.43.0.tar.gz'; \
-         ;;\
-       *) \
-         echo "Unsupported arch: ${ARCH}"; \
-         exit 1; \
-         ;; \
-    esac; \
-    curl -LfsSo /tmp/openjdk.tar.gz.sha256.txt ${ESUM_URL}; \
-    curl -OLJSks ${BINARY_URL}; \
-    sha256sum -c /tmp/openjdk.tar.gz.sha256.txt; \
     mv ibm-semeru-*tar.gz /tmp/openjdk.tar.gz; \
     mkdir -p /opt/java/openjdk; \
     cd /opt/java/openjdk; \
@@ -120,18 +62,13 @@ ENV JAVA_TOOL_OPTIONS="-XX:+IgnoreUnrecognizedVMOptions -XX:+PortableSharedCache
 # With SCC, OpenJ9 startup is improved ~50% with an increase in image size of ~14MB
 # Application classes can be create a separate cache layer with this as the base for further startup improvement
 
+COPY tomcat.tar.gz /tmp/tomcat.tar.gz
 RUN set -eux; \
     unset OPENJ9_JAVA_OPTIONS; \
     SCC_SIZE="50m"; \
-    DOWNLOAD_PATH_TOMCAT=/tmp/tomcat; \
     INSTALL_PATH_TOMCAT=/opt/tomcat-home; \
-    TOMCAT_CHECKSUM="06e239d15ff7b72017c1d0752ddb1be4651374f7c1391631ec5619f4981cb2911267bc6b044d6c71a2a74738f70d433b96418951439848121f1d874862ddd3de"; \
-    TOMCAT_DWNLD_URL="https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.85/bin/apache-tomcat-9.0.85.tar.gz"; \
-    \
-    mkdir -p "${DOWNLOAD_PATH_TOMCAT}" "${INSTALL_PATH_TOMCAT}"; \
-    curl -LfsSo "${DOWNLOAD_PATH_TOMCAT}"/tomcat.tar.gz "${TOMCAT_DWNLD_URL}"; \
-    echo "${TOMCAT_CHECKSUM} *${DOWNLOAD_PATH_TOMCAT}/tomcat.tar.gz" | sha512sum -c -; \
-    tar -xf "${DOWNLOAD_PATH_TOMCAT}"/tomcat.tar.gz -C "${INSTALL_PATH_TOMCAT}" --strip-components=1; \
+    mkdir -p "${INSTALL_PATH_TOMCAT}"; \
+    tar -xf "/tmp/tomcat.tar.gz" -C "${INSTALL_PATH_TOMCAT}" --strip-components=1; \
     rm -rf "${DOWNLOAD_PATH_TOMCAT}"; \
     \
     java -Xshareclasses:name=dry_run_scc,cacheDir=/opt/java/.scc,bootClassesOnly,nonFatal,createLayer -Xscmx$SCC_SIZE -version; \
